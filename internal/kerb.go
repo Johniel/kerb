@@ -185,3 +185,13 @@ func RemoveKerbHeader(path string) error {
 	}
 	return nil
 }
+
+// AddKerbHeader adds kerbHeader to the beginning of the file at path, even if it already has it.
+func AddKerbHeader(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	newData := append([]byte(kerbHeader+"\n"), data...)
+	return os.WriteFile(path, newData, 0644)
+}

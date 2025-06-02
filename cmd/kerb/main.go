@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/Johniel/kerb/internal"
 )
@@ -14,6 +15,7 @@ func main() {
 		fmt.Println("  kerb is-kerb-file <file>")
 		fmt.Println("  kerb sync [--remove-header] <srcDir>")
 		fmt.Println("  kerb insert-header <file>")
+		fmt.Println("  kerb add-header [<file>]")
 		fmt.Println("  kerb replace <file> <old> <new>")
 		fmt.Println("  kerb replace-all <old> <new>")
 		fmt.Println("  kerb list")
@@ -27,6 +29,8 @@ func main() {
 		syncKerbFilesCmd(os.Args[2:])
 	case "insert-header":
 		insertKerbHeaderCmd(os.Args[2:])
+	case "add-header":
+		addKerbHeaderCmd(os.Args[2:])
 	case "replace":
 		replaceInKerbFileCmd(os.Args[2:])
 	case "replace-all":
@@ -117,6 +121,47 @@ func insertKerbHeaderCmd(args []string) {
 		os.Exit(2)
 	}
 	fmt.Println("Kerb header inserted.")
+}
+
+func addKerbHeaderCmd(args []string) {
+	fs := flag.NewFlagSet("add-header", flag.ExitOnError)
+	fs.Parse(args)
+	if fs.NArg() > 1 {
+		fmt.Fprintln(os.Stderr, "Error: wrong number of arguments. Usage: kerb add-header [<file>]")
+		os.Exit(1)
+	}
+	if fs.NArg() == 1 {
+		file := fs.Arg(0)
+		if err := internal.AddKerbHeader(file); err != nil {
+			fmt.Fprintf(os.Stderr, "Error adding header to %s: %v\n", file, err)
+			os.Exit(2)
+		}
+		fmt.Printf("Kerb header added to: %s\n", file)
+		return
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(2)
+	}
+	err = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if err := internal.AddKerbHeader(path); err != nil {
+			fmt.Fprintf(os.Stderr, "Error adding header to %s: %v\n", path, err)
+		} else {
+			fmt.Printf("Kerb header added to: %s\n", path)
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error walking directory: %v\n", err)
+		os.Exit(2)
+	}
 }
 
 func replaceInKerbFileCmd(args []string) {
