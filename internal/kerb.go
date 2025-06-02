@@ -167,3 +167,21 @@ func ListKerbFiles(dir string) ([]string, error) {
 	}
 	return result, nil
 }
+
+// RemoveKerbHeader removes the kerbHeader from the beginning of the file at path, if present.
+// If the header is not present, it does nothing.
+func RemoveKerbHeader(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if len(data) >= len(kerbHeader) && string(data[:len(kerbHeader)]) == kerbHeader {
+		// Remove the header and following newline if present
+		start := len(kerbHeader)
+		if len(data) > start && data[start] == '\n' {
+			start++
+		}
+		return os.WriteFile(path, data[start:], 0644)
+	}
+	return nil
+}

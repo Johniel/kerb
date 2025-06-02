@@ -12,7 +12,7 @@ func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage:")
 		fmt.Println("  kerb is-kerb-file <file>")
-		fmt.Println("  kerb sync <srcDir>")
+		fmt.Println("  kerb sync [--remove-header] <srcDir>")
 		fmt.Println("  kerb insert-header <file>")
 		fmt.Println("  kerb replace <file> <old> <new>")
 		fmt.Println("  kerb replace-all <old> <new>")
@@ -63,9 +63,10 @@ func hasKerbHeaderCmd(args []string) {
 
 func syncKerbFilesCmd(args []string) {
 	fs := flag.NewFlagSet("sync", flag.ExitOnError)
+	removeHeader := fs.Bool("remove-header", false, "Remove Kerb header after copying")
 	fs.Parse(args)
 	if fs.NArg() != 1 {
-		fmt.Fprintln(os.Stderr, "Error: wrong number of arguments. Usage: kerb sync <srcDir>")
+		fmt.Fprintln(os.Stderr, "Error: wrong number of arguments. Usage: kerb sync [--remove-header] <srcDir>")
 		os.Exit(1)
 	}
 	srcDir := fs.Arg(0)
@@ -77,6 +78,20 @@ func syncKerbFilesCmd(args []string) {
 	if err := internal.SyncKerbFiles(srcDir, dstDir); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(2)
+	}
+	if *removeHeader {
+		files, err := internal.ListKerbFiles(dstDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error listing kerb files: %v\n", err)
+			os.Exit(2)
+		}
+		for _, file := range files {
+			if err := internal.RemoveKerbHeader(file); err != nil {
+				fmt.Fprintf(os.Stderr, "Error removing header from %s: %v\n", file, err)
+				continue
+			}
+			fmt.Printf("Kerb header removed from: %s\n", file)
+		}
 	}
 }
 
