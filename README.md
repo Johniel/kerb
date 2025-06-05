@@ -33,14 +33,16 @@ Inserts the Kerb header at the beginning of the specified file, if not already p
 kerb insert-header <file>
 ```
 
-### add-header [<file>]
-Adds the Kerb header to the beginning of the specified file, or to all files under the current directory if no file is specified. The header is added even if it already exists.
+### add-header [<file1> <file2> ...]
+Adds the Kerb header to the beginning of one or more specified files, or to all files under the current directory if no file is specified. The header is added even if it already exists.
 
 **Usage:**
 ```
-kerb add-header <file>
+kerb add-header <file1> <file2> ...
 kerb add-header
 ```
+- If one or more file paths are given, the header is added to each specified file.
+- If no argument is given, the header is added to all files under the current directory.
 
 ### replace <file> <old> <new>
 Replaces all occurrences of `<old>` with `<new>` in the specified file, but only if the file contains the Kerb header.

@@ -15,7 +15,8 @@ func main() {
 		fmt.Println("  kerb is-kerb-file <file>")
 		fmt.Println("  kerb sync [--remove-header] <srcDir>")
 		fmt.Println("  kerb insert-header <file>")
-		fmt.Println("  kerb add-header [<file>]")
+		fmt.Println("  kerb add-header [<file1> <file2> ...]")
+		fmt.Println("  kerb remove-header [<file1> <file2> ...]")
 		fmt.Println("  kerb replace <file> <old> <new>")
 		fmt.Println("  kerb replace-all <old> <new>")
 		fmt.Println("  kerb list")
@@ -31,6 +32,8 @@ func main() {
 		insertKerbHeaderCmd(os.Args[2:])
 	case "add-header":
 		addKerbHeaderCmd(os.Args[2:])
+	case "remove-header":
+		removeKerbHeaderCmd(os.Args[2:])
 	case "replace":
 		replaceInKerbFileCmd(os.Args[2:])
 	case "replace-all":
@@ -126,41 +129,92 @@ func insertKerbHeaderCmd(args []string) {
 func addKerbHeaderCmd(args []string) {
 	fs := flag.NewFlagSet("add-header", flag.ExitOnError)
 	fs.Parse(args)
-	if fs.NArg() > 1 {
-		fmt.Fprintln(os.Stderr, "Error: wrong number of arguments. Usage: kerb add-header [<file>]")
-		os.Exit(1)
+	if fs.NArg() == 0 {
+		dir, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(2)
+		}
+		err = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if err := internal.AddKerbHeader(path); err != nil {
+				fmt.Fprintf(os.Stderr, "Error adding header to %s: %v\n", path, err)
+			} else {
+				fmt.Printf("Kerb header added to: %s\n", path)
+			}
+			return nil
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error walking directory: %v\n", err)
+			os.Exit(2)
+		}
+		return
 	}
-	if fs.NArg() == 1 {
-		file := fs.Arg(0)
+	for _, file := range fs.Args() {
 		if err := internal.AddKerbHeader(file); err != nil {
 			fmt.Fprintf(os.Stderr, "Error adding header to %s: %v\n", file, err)
 			os.Exit(2)
 		}
 		fmt.Printf("Kerb header added to: %s\n", file)
+	}
+}
+
+func removeKerbHeaderCmd(args []string) {
+	fs := flag.NewFlagSet("remove-header", flag.ExitOnError)
+	fs.Parse(args)
+	if fs.NArg() == 0 {
+		dir, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(2)
+		}
+		err = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			has, err := internal.HasKerbHeader(path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error checking header in %s: %v\n", path, err)
+				return nil
+			}
+			if !has {
+				return nil
+			}
+			if err := internal.RemoveKerbHeader(path); err != nil {
+				fmt.Fprintf(os.Stderr, "Error removing header from %s: %v\n", path, err)
+			} else {
+				fmt.Printf("Kerb header removed from: %s\n", path)
+			}
+			return nil
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error walking directory: %v\n", err)
+			os.Exit(2)
+		}
 		return
 	}
-	dir, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(2)
-	}
-	err = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+	for _, file := range fs.Args() {
+		has, err := internal.HasKerbHeader(file)
 		if err != nil {
-			return err
+			fmt.Fprintf(os.Stderr, "Error checking header in %s: %v\n", file, err)
+			os.Exit(2)
 		}
-		if d.IsDir() {
-			return nil
+		if !has {
+			continue
 		}
-		if err := internal.AddKerbHeader(path); err != nil {
-			fmt.Fprintf(os.Stderr, "Error adding header to %s: %v\n", path, err)
-		} else {
-			fmt.Printf("Kerb header added to: %s\n", path)
+		if err := internal.RemoveKerbHeader(file); err != nil {
+			fmt.Fprintf(os.Stderr, "Error removing header from %s: %v\n", file, err)
+			os.Exit(2)
 		}
-		return nil
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error walking directory: %v\n", err)
-		os.Exit(2)
+		fmt.Printf("Kerb header removed from: %s\n", file)
 	}
 }
 
